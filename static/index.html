@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Restaurant - Customer Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-focus: rgba(255, 255, 255, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-gradient: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+            --accent-color: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.4);
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --card-padding: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 10;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+            animation: bounce 2s infinite alternate;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--glass-border-focus);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: var(--accent-gradient);
+            border: none;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Layout Grid */
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            flex-grow: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            background: rgba(15, 23, 42, 0.4);
+            border-right: 1px solid var(--glass-border);
+            backdrop-filter: blur(8px);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .sidebar-section:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .sidebar-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #a78bfa;
+        }
+
+        /* Thread Configuration form */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .text-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .text-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
+        }
+
+        /* Menu List Styling */
+        .menu-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .menu-item-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-item-name {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .menu-item-stock {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .menu-item-price {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            color: #f472b6;
+        }
+
+        /* History List */
+        .order-history-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .history-card {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 0.85rem;
+            position: relative;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .history-id {
+            font-weight: 600;
+            color: #38bdf8;
+        }
+
+        .history-status {
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-draft { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+        .status-pending { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+        .status-approved { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .status-rejected { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .status-cooked { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+
+        .history-items {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+
+        /* Main Chat Area */
+        .main-chat {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            background: rgba(15, 23, 42, 0.2);
+        }
+
+        /* System Interrupt Card */
+        .interrupt-banner {
+            background: linear-gradient(90deg, rgba(217, 119, 6, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-radius: 12px;
+            margin: 16px 24px 0 24px;
+            padding: 16px;
+            display: none; /* Shown dynamically */
+            animation: pulse-border 2s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: rgba(245, 158, 11, 0.2); }
+            100% { border-color: rgba(245, 158, 11, 0.6); }
+        }
+
+        .interrupt-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+        }
+
+        .interrupt-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Message Logs */
+        .chat-logs {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-bubble.assistant {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .message-bubble.user {
+            align-self: flex-end;
+            background: var(--accent-gradient);
+            border-bottom-right-radius: 4px;
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .message-bubble.system {
+            align-self: center;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            padding: 6px 12px;
+        }
+
+        /* Input Controls */
+        .chat-input-area {
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input-wrapper {
+            position: relative;
+            flex-grow: 1;
+        }
+
+        .chat-text-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+            padding-right: 50px;
+        }
+
+        .chat-text-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+        }
+
+        .chat-text-input:disabled {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.03);
+            color: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+        }
+
+        .send-btn {
+            background: var(--accent-gradient);
+            border: none;
+            color: white;
+            padding: 0 24px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px var(--accent-glow);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px var(--accent-glow);
+        }
+
+        .send-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .send-btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .clear-chat-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .clear-chat-btn:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <span class="logo-icon">🍽️</span>
+            <h1>AI Restaurant</h1>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-btn active">👤 Customer Portal</a>
+            <a href="/manager" class="nav-btn">👔 Manager Dashboard</a>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Thread Configuration -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">⚙️ Session Context</div>
+                <div class="input-group">
+                    <label class="input-label" for="thread-input">Customer Thread ID</label>
+                    <input type="text" id="thread-input" class="text-input" value="customer_001" onchange="changeThread()">
+                </div>
+                <button class="clear-chat-btn" style="margin-top: 15px; width: 100%;" onclick="clearChat()">🧹 Clear Thread Chat</button>
+            </div>
+
+            <!-- Dynamic Menu Panel -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">📋 Today's Menu</div>
+                <ul class="menu-list" id="menu-items-list">
+                    <!-- Loaded dynamically -->
+                </ul>
+            </div>
+
+            <!-- Order History Panel -->
+            <div class="sidebar-section" style="flex-grow: 1;">
+                <div class="sidebar-title">⏱️ Order History</div>
+                <ul class="order-history-list" id="order-history-container">
+                    <!-- Loaded dynamically -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Chat Panel -->
+        <main class="main-chat">
+            <!-- Interrupted/Pending Card -->
+            <div class="interrupt-banner" id="interrupt-alert">
+                <div class="interrupt-title">🕒 Waiting for Manager Approval</div>
+                <div class="interrupt-desc">
+                    Your order has been submitted for manager approval. Chatting is paused. 
+                    Switch to the <b>Manager Dashboard</b> tab at the top to approve or reject this order.
+                </div>
+            </div>
+
+            <!-- Chat message log container -->
+            <div class="chat-logs" id="chat-logs-container">
+                <!-- Dynamically loaded messages -->
+                <div class="message-bubble assistant">
+                    Hello! I am your AI Restaurant Assistant. 🍽️<br><br>
+                    Here is what I can do for you today:<br>
+                    1. Show you the menu and prices<br>
+                    2. Check item availability in stock<br>
+                    3. Create and customize your orders<br><br>
+                    What would you like to order?
+                </div>
+            </div>
+
+            <!-- Chat input -->
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <input type="text" id="chat-message-input" class="chat-text-input" placeholder="Type message (e.g. 'I want 2 burgers and a coke')" onkeydown="if(event.key === 'Enter') sendMessage()">
+                </div>
+                <button id="send-button" class="send-btn" onclick="sendMessage()">Send 🚀</button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentThread = 'customer_001';
+        let isSendingMessage = false;
+        let lastRenderedMessagesJson = '';
+
+        // Load page essentials on startup
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMenu();
+            loadThreadState();
+            // Poll for state updates every 4 seconds to catch approvals/updates
+            setInterval(pollStatusAndHistory, 4000);
+        });
+
+        function changeThread() {
+            const input = document.getElementById('thread-input');
+            currentThread = input.value.trim() || 'customer_001';
+            input.value = currentThread;
+            // Clear message UI list and load messages for the new thread
+            document.getElementById('chat-logs-container').innerHTML = '';
+            lastRenderedMessagesJson = '';
+            loadThreadState();
+        }
+
+        async function loadMenu() {
+            try {
+                const response = await fetch('/api/menu');
+                const menu = await response.json();
+                const container = document.getElementById('menu-items-list');
+                container.innerHTML = '';
+                
+                menu.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'menu-item';
+                    li.innerHTML = `
+                        <div class="menu-item-details">
+                            <span class="menu-item-name">${item.name}</span>
+                            <span class="menu-item-stock">Stock: ${item.available_qty}</span>
+                        </div>
+                        <span class="menu-item-price">Rs. ${item.price}</span>
+                    `;
+                    container.appendChild(li);
+                });
+            } catch (err) {
+                console.error("Error loading menu:", err);
+            }
+        }
+
+        async function loadThreadState() {
+            if (isSendingMessage) return;
+            try {
+                // Fetch Order History for this thread
+                loadOrderHistory();
+
+                const response = await fetch(`/api/customer/chat-history/${currentThread}`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    renderChatMessages(messages);
+                }
+            } catch (err) {
+                console.error("Error loading thread state:", err);
+            }
+        }
+
+        async function loadOrderHistory() {
+            try {
+                const response = await fetch(`/api/customer/order-history/${currentThread}`);
+                const orders = await response.json();
+                const container = document.getElementById('order-history-container');
+                container.innerHTML = '';
+
+                let activePending = false;
+
+                orders.forEach(order => {
+                    const li = document.createElement('li');
+                    li.className = 'history-card';
+                    
+                    const statusClass = 'status-' + order.status.toLowerCase().replace('_', '-');
+                    
+                    if (order.status === 'PENDING_APPROVAL') {
+                        activePending = true;
+                    }
+
+                    const itemsText = order.items.map(i => `${i.item} x${i.qty}`).join(', ');
+
+                    li.innerHTML = `
+                        <div class="history-header">
+                            <span class="history-id">Order #${order.order_id}</span>
+                            <span class="history-status ${statusClass}">${order.status}</span>
+                        </div>
+                        <div class="history-items">${itemsText}</div>
+                        ${order.manager_note ? `<div style="font-size:0.75rem; color:#fcd34d; margin-top:5px; font-style:italic;">Note: ${order.manager_note}</div>` : ''}
+                    `;
+                    container.appendChild(li);
+                });
+
+                togglePendingApprovalMode(activePending);
+            } catch (err) {
+                console.error("Error loading order history:", err);
+            }
+        }
+
+        function renderChatMessages(messages) {
+            const messagesJson = JSON.stringify(messages);
+            if (messagesJson === lastRenderedMessagesJson) {
+                return; // Prevent screen updates or scrolling shifts if identical
+            }
+            lastRenderedMessagesJson = messagesJson;
+
+            const container = document.getElementById('chat-logs-container');
+            container.innerHTML = '';
+            
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="message-bubble assistant">
+                        Hello! I am your AI Restaurant Assistant. 🍽️<br><br>
+                        Here is what I can do for you today:<br>
+                        1. Show you the menu and prices<br>
+                        2. Check item availability in stock<br>
+                        3. Create and customize your orders<br><br>
+                        What would you like to order?
+                    </div>
+                `;
+                return;
+            }
+
+            messages.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `message-bubble ${msg.role}`;
+                div.innerHTML = msg.content.replace(/\n/g, '<br>');
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function togglePendingApprovalMode(isPending) {
+            const alert = document.getElementById('interrupt-alert');
+            const input = document.getElementById('chat-message-input');
+            const button = document.getElementById('send-button');
+
+            if (isPending) {
+                alert.style.display = 'block';
+                input.disabled = true;
+                button.disabled = true;
+                input.placeholder = "Awaiting manager approval...";
+            } else {
+                alert.style.display = 'none';
+                input.disabled = false;
+                button.disabled = false;
+                input.placeholder = "Type message (e.g. 'I want 2 burgers and a coke')";
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-message-input');
+            const msgText = input.value.trim();
+            if (!msgText) return;
+
+            isSendingMessage = true;
+            lastRenderedMessagesJson = ''; // Clear to force re-render when finished
+
+            // Optimistically add User bubble
+            const container = document.getElementById('chat-logs-container');
+            const userDiv = document.createElement('div');
+            userDiv.className = 'message-bubble user';
+            userDiv.innerText = msgText;
+            container.appendChild(userDiv);
+            container.scrollTop = container.scrollHeight;
+
+            input.value = '';
+
+            // Add typewriter indicator
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'message-bubble assistant';
+            thinkingDiv.innerText = 'Typing...';
+            container.appendChild(thinkingDiv);
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                const response = await fetch('/api/customer/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        thread_id: currentThread,
+                        message: msgText
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("API responded with error code " + response.status);
+                }
+
+                // Remove indicator
+                thinkingDiv.remove();
+            } catch (err) {
+                console.error("Chat error:", err);
+                thinkingDiv.className = 'message-bubble system';
+                thinkingDiv.innerText = `Error: ${err.message}`;
+            } finally {
+                isSendingMessage = false;
+                loadThreadState();
+                loadMenu(); // Refresh stock quantities
+            }
+        }
+
+        async function clearChat() {
+            if (!confirm("Are you sure you want to clear this thread's chat history?")) return;
+            try {
+                const response = await fetch('/api/customer/clear-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ thread_id: currentThread })
+                });
+                if (response.ok) {
+                    document.getElementById('chat-logs-container').innerHTML = '';
+                    lastRenderedMessagesJson = '';
+                    loadThreadState();
+                }
+            } catch (err) {
+                console.error("Clear chat error:", err);
+            }
+        }
+
+        function pollStatusAndHistory() {
+            loadThreadState();
+            loadMenu();
+        }
+    </script>
+</body>
+</html>

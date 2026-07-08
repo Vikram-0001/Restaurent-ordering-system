@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Restaurant - Manager Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0b0f19 0%, #111827 100%);
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --glass-border-focus: rgba(255, 255, 255, 0.15);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --accent-gradient: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            --accent-color: #10b981;
+            --success-gradient: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            --error-gradient: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+            --card-padding: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 10;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--glass-border-focus);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+            border: none;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Container & Header */
+        .dashboard-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 0 24px;
+            flex-grow: 1;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-title-group h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #f3f4f6;
+        }
+
+        .dashboard-title-group p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Grid Layout for Pending Orders */
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 24px;
+        }
+
+        /* Empty State */
+        .no-orders-card {
+            grid-column: 1 / -1;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 60px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .no-orders-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .no-orders-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #34d399;
+            margin-bottom: 8px;
+        }
+
+        .no-orders-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Order Review Card */
+        .order-card {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: var(--card-padding);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .order-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .order-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(245, 158, 11, 0.25);
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.05);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-id {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fbbf24;
+        }
+
+        .status-badge {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .order-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding-bottom: 12px;
+        }
+
+        .order-meta code {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .order-items-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .order-items-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .order-item-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .order-item-qty {
+            color: #a78bfa;
+            font-weight: 600;
+        }
+
+        .note-area {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            outline: none;
+            resize: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .note-area:focus {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .btn-decision {
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn-approve {
+            background: var(--success-gradient);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-approve:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.35);
+        }
+
+        .btn-reject {
+            background: var(--error-gradient);
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-reject:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(239, 68, 68, 0.35);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--glass-border);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <span class="logo-icon">🍽️</span>
+            <h1>AI Restaurant</h1>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-btn">👤 Customer Portal</a>
+            <a href="/manager" class="nav-btn active">👔 Manager Dashboard</a>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <div class="dashboard-title-group">
+                <h2>👨‍🍳 Manager Approvals Dashboard</h2>
+                <p>Review orders awaiting verification and approve or deny them to update stocks and trigger cooking workflows.</p>
+            </div>
+            <button class="refresh-btn" onclick="loadPendingOrders()">🔄 Refresh List</button>
+        </div>
+
+        <div class="orders-grid" id="pending-orders-container">
+            <!-- Dynamically populated or empty card -->
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="notification-toast">
+        <span class="toast-icon" id="toast-icon">✅</span>
+        <span class="toast-message" id="toast-message">Action successful!</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPendingOrders();
+            // Auto refresh list every 5 seconds
+            setInterval(loadPendingOrders, 5000);
+        });
+
+        async function loadPendingOrders() {
+            try {
+                const response = await fetch('/api/manager/pending-orders');
+                const orders = await response.json();
+                const container = document.getElementById('pending-orders-container');
+                container.innerHTML = '';
+
+                if (orders.length === 0) {
+                    container.innerHTML = `
+                        <div class="no-orders-card">
+                            <div class="no-orders-icon">🎉</div>
+                            <div class="no-orders-title">All Caught Up!</div>
+                            <div class="no-orders-desc">No orders are currently waiting for manager approval. Active customers can place new orders.</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                orders.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    
+                    const itemsRows = order.items.map(item => `
+                        <div class="order-item-row">
+                            <span>${item.item}</span>
+                            <span class="order-item-qty">x${item.qty}</span>
+                        </div>
+                    `).join('');
+
+                    card.innerHTML = `
+                        <div class="order-header">
+                            <span class="order-id">Order #${order.order_id}</span>
+                            <span class="status-badge">${order.status}</span>
+                        </div>
+                        <div class="order-meta">
+                            <span><b>Customer ID:</b> <code>${order.customer_thread_id}</code></span>
+                            <span><b>Created at:</b> ${order.created_at}</span>
+                        </div>
+                        <div class="order-items-title">Items Checklist:</div>
+                        <div class="order-items-list">
+                            ${itemsRows}
+                        </div>
+                        <div>
+                            <textarea id="note-${order.order_id}" class="note-area" placeholder="Add custom notes (e.g. 'Extra napkins', 'No onions')" rows="2"></textarea>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-decision btn-approve" onclick="makeDecision(${order.order_id}, '${order.customer_thread_id}', 'approve')">Approve ✔️</button>
+                            <button class="btn-decision btn-reject" onclick="makeDecision(${order.order_id}, '${order.customer_thread_id}', 'reject')">Reject ✖️</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Error loading pending orders:", err);
+            }
+        }
+
+        async function makeDecision(orderId, threadId, action) {
+            const noteArea = document.getElementById(`note-${orderId}`);
+            const note = noteArea ? noteArea.value.trim() : '';
+            
+            try {
+                const response = await fetch(`/api/manager/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        thread_id: threadId,
+                        note: note
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showToast(action === 'approve' ? '💚' : '💔', `Order #${orderId} ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
+                    loadPendingOrders();
+                } else {
+                    showToast('❌', `Failed: ${result.detail || 'Unknown error'}`);
+                }
+            } catch (err) {
+                console.error(`Error during ${action}:`, err);
+                showToast('❌', `Network error during ${action}`);
+            }
+        }
+
+        function showToast(icon, message) {
+            const toast = document.getElementById('notification-toast');
+            document.getElementById('toast-icon').innerText = icon;
+            document.getElementById('toast-message').innerText = message;
+            
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
