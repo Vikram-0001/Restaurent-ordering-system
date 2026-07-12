@@ -139,6 +139,7 @@ workflow.add_conditional_edges(
     route_agent,
     {
         "tools": "tools",
+        "manager_review": "manager_review",
         "__end__": "__end__"
     }
 )

@@ -61,6 +61,25 @@ class MenuItemResponse(BaseModel):
     available_qty: int
     is_active: int
 
+class MenuAddRequest(BaseModel):
+    name: str
+    price: float
+    available_qty: int
+
+class MenuEditRequest(BaseModel):
+    item_id: int
+    name: str
+    price: float
+    available_qty: int
+    is_active: int
+
+class MenuStockRequest(BaseModel):
+    item_id: int
+    qty: int
+
+class RestaurantStatusRequest(BaseModel):
+    status: str
+
 # ============================================================
 # API Endpoints
 # ============================================================
@@ -76,6 +95,11 @@ def get_menu():
 @app.post("/api/customer/chat", response_model=ChatResponse, tags=["Customer"])
 def customer_chat(req: ChatRequest):
     """Sends a chat message to the AI Restaurant Assistant for a specific thread."""
+    if not db.is_restaurant_open():
+        return ChatResponse(
+            response="Hello! We are sorry, but our restaurant is currently CLOSED (offline). We are not accepting orders at this time. Please try again later!",
+            is_pending_approval=False
+        )
     config = {"configurable": {"thread_id": req.thread_id}}
     try:
         # Run the graph
@@ -274,6 +298,115 @@ def reject_order(req: DecisionRequest):
         if success:
             return {"status": "success", "message": f"Order #{req.order_id} rejected directly in database."}
         raise HTTPException(status_code=400, detail="Failed to reject order directly.")
+
+@app.get("/api/restaurant-status", tags=["Restaurant Status"])
+def get_restaurant_status():
+    """Retrieves the current online/offline status of the restaurant."""
+    return {"status": "OPEN" if db.is_restaurant_open() else "CLOSED"}
+
+@app.post("/api/manager/restaurant-status/toggle", tags=["Manager"])
+def toggle_restaurant_status(req: RestaurantStatusRequest):
+    """Toggles the restaurant online/offline status."""
+    success = db.set_restaurant_status(req.status)
+    if success:
+        return {"status": "success", "restaurant_status": req.status}
+    raise HTTPException(status_code=400, detail="Invalid status. Must be 'OPEN' or 'CLOSED'.")
+
+@app.get("/api/manager/all-orders", tags=["Manager"])
+def get_all_orders():
+    """Retrieves all historical orders."""
+    try:
+        return db.get_all_orders()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/manager/overview", tags=["Manager"])
+def get_overview_metrics():
+    """Calculates and aggregates metrics for the manager dashboard overview."""
+    try:
+        orders = db.get_all_orders()
+        total_orders = len(orders)
+        approved_count = 0
+        rejected_count = 0
+        total_revenue = 0.0
+        
+        daily_stats = {}
+        for order in orders:
+            status = order["status"]
+            created_at = order.get("created_at")
+            date_str = created_at[:10] if created_at else "Unknown Date"
+            
+            if date_str not in daily_stats:
+                daily_stats[date_str] = {
+                    "date": date_str,
+                    "total_orders": 0,
+                    "approved_orders": 0,
+                    "rejected_orders": 0,
+                    "total_revenue": 0.0
+                }
+            
+            daily_stats[date_str]["total_orders"] += 1
+            if status in ("APPROVED", "COOKED"):
+                approved_count += 1
+                total_revenue += order.get("total_price", 0.0)
+                daily_stats[date_str]["approved_orders"] += 1
+                daily_stats[date_str]["total_revenue"] += order.get("total_price", 0.0)
+            elif status == "REJECTED":
+                rejected_count += 1
+                daily_stats[date_str]["rejected_orders"] += 1
+                
+        sorted_daily = sorted(daily_stats.values(), key=lambda x: x["date"], reverse=True)
+        
+        return {
+            "total_orders": total_orders,
+            "approved_orders": approved_count,
+            "rejected_orders": rejected_count,
+            "total_revenue": total_revenue,
+            "daily_breakdown": sorted_daily
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/manager/menu/all", response_model=List[MenuItemResponse], tags=["Manager"])
+def get_all_menu_items():
+    """Retrieves all menu items, including inactive ones."""
+    try:
+        return db.get_all_menu_items()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/manager/menu/add", tags=["Manager"])
+def add_new_item(req: MenuAddRequest):
+    """Adds a new item to the restaurant menu."""
+    success = db.add_menu_item(req.name, req.price, req.available_qty)
+    if success:
+        return {"status": "success", "message": f"Menu item '{req.name}' added successfully."}
+    raise HTTPException(status_code=400, detail="Failed to add menu item. Name might already exist.")
+
+@app.post("/api/manager/menu/edit", tags=["Manager"])
+def edit_menu_item(req: MenuEditRequest):
+    """Edits details of an existing menu item."""
+    success = db.edit_menu_item(req.item_id, req.name, req.price, req.available_qty, req.is_active)
+    if success:
+        return {"status": "success", "message": f"Menu item '{req.name}' updated successfully."}
+    raise HTTPException(status_code=400, detail="Failed to update menu item.")
+
+@app.post("/api/manager/menu/update-stock", tags=["Manager"])
+def update_item_stock(req: MenuStockRequest):
+    """Directly updates/sets the stock level for an item."""
+    success = db.update_menu_item_stock(req.item_id, req.qty)
+    if success:
+        return {"status": "success", "message": f"Item stock updated to {req.qty}."}
+    raise HTTPException(status_code=400, detail="Failed to update item stock.")
+
+@app.post("/api/manager/menu/toggle-active", tags=["Manager"])
+def toggle_item_active(req: MenuEditRequest):
+    """Enables or disables an item on the menu."""
+    success = db.toggle_menu_item_active(req.item_id, req.is_active)
+    if success:
+        action = "activated" if req.is_active == 1 else "deactivated"
+        return {"status": "success", "message": f"Item {action} successfully."}
+    raise HTTPException(status_code=400, detail="Failed to toggle menu item activation.")
 
 # Mount static files for HTML web UI if static folder exists
 static_path = os.path.join(os.path.dirname(__file__), "static")

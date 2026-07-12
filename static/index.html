@@ -270,6 +270,21 @@
             margin-top: 4px;
         }
 
+        .history-total {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 6px;
+        }
+
+        .history-total-val {
+            color: #f472b6;
+            font-weight: 600;
+        }
+
         /* Main Chat Area */
         .main-chat {
             display: flex;
@@ -522,6 +537,15 @@
                 </div>
             </div>
 
+            <!-- Restaurant Closed Card -->
+            <div class="interrupt-banner" id="restaurant-closed-alert" style="background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.05) 100%); border-color: rgba(239, 68, 68, 0.35); display: none;">
+                <div class="interrupt-title" style="color: #f87171; display: flex; align-items: center; gap: 8px;">🕒 Restaurant is Offline</div>
+                <div class="interrupt-desc" style="color: #cbd5e1;">
+                    We are currently CLOSED. Ordering is disabled. The manager has set the restaurant offline. 
+                    Please check back later when we are online.
+                </div>
+            </div>
+
             <!-- Chat message log container -->
             <div class="chat-logs" id="chat-logs-container">
                 <!-- Dynamically loaded messages -->
@@ -552,6 +576,7 @@
 
         // Load page essentials on startup
         document.addEventListener('DOMContentLoaded', () => {
+            checkRestaurantStatus();
             loadMenu();
             loadThreadState();
             // Poll for state updates every 4 seconds to catch approvals/updates
@@ -635,6 +660,10 @@
                             <span class="history-status ${statusClass}">${order.status}</span>
                         </div>
                         <div class="history-items">${itemsText}</div>
+                        <div class="history-total">
+                            <span>Total Amount:</span>
+                            <span class="history-total-val">Rs. ${(order.total_price || 0.00).toFixed(2)}</span>
+                        </div>
                         ${order.manager_note ? `<div style="font-size:0.75rem; color:#fcd34d; margin-top:5px; font-style:italic;">Note: ${order.manager_note}</div>` : ''}
                     `;
                     container.appendChild(li);
@@ -679,6 +708,42 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        let isRestaurantOpen = true;
+
+        async function checkRestaurantStatus() {
+            try {
+                const response = await fetch('/api/restaurant-status');
+                const data = await response.json();
+                isRestaurantOpen = data.status === 'OPEN';
+                
+                const closedAlert = document.getElementById('restaurant-closed-alert');
+                const input = document.getElementById('chat-message-input');
+                const button = document.getElementById('send-button');
+                
+                if (!isRestaurantOpen) {
+                    closedAlert.style.display = 'block';
+                    // If not already waiting for manager approval, disable input
+                    const isPending = document.getElementById('interrupt-alert').style.display === 'block';
+                    if (!isPending) {
+                        input.disabled = true;
+                        button.disabled = true;
+                        input.placeholder = "Restaurant is offline / closed...";
+                    }
+                } else {
+                    closedAlert.style.display = 'none';
+                    // Re-evaluate pending approval state to decide if input should be enabled
+                    const isPending = document.getElementById('interrupt-alert').style.display === 'block';
+                    if (!isPending) {
+                        input.disabled = false;
+                        button.disabled = false;
+                        input.placeholder = "Type message (e.g. 'I want 2 burgers and a coke')";
+                    }
+                }
+            } catch (err) {
+                console.error("Error checking restaurant status:", err);
+            }
+        }
+
         function togglePendingApprovalMode(isPending) {
             const alert = document.getElementById('interrupt-alert');
             const input = document.getElementById('chat-message-input');
@@ -691,9 +756,15 @@
                 input.placeholder = "Awaiting manager approval...";
             } else {
                 alert.style.display = 'none';
-                input.disabled = false;
-                button.disabled = false;
-                input.placeholder = "Type message (e.g. 'I want 2 burgers and a coke')";
+                if (!isRestaurantOpen) {
+                    input.disabled = true;
+                    button.disabled = true;
+                    input.placeholder = "Restaurant is offline / closed...";
+                } else {
+                    input.disabled = false;
+                    button.disabled = false;
+                    input.placeholder = "Type message (e.g. 'I want 2 burgers and a coke')";
+                }
             }
         }
 
@@ -770,6 +841,7 @@
         function pollStatusAndHistory() {
             loadThreadState();
             loadMenu();
+            checkRestaurantStatus();
         }
     </script>
 </body>

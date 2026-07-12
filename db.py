@@ -35,6 +35,11 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+
+    # ----------------------------------
+    # SCHEMAS
+    # ----------------------------------
+
 def create_tables():
     conn = get_connection()
     cursor = conn.cursor()
@@ -62,10 +67,27 @@ def create_tables():
             status TEXT NOT NULL,
             manager_note TEXT,
             inventory_deducted INTEGER DEFAULT 0,
+            total_price REAL DEFAULT 0.0,
             created_at TEXT,
             updated_at TEXT
         )
     """)
+    # -------------------------
+    # Settings Table
+    # -------------------------
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+
+    # Schema migration: check if total_price column exists in orders
+    cursor.execute("PRAGMA table_info(orders)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if columns and "total_price" not in columns:
+        cursor.execute("ALTER TABLE orders ADD COLUMN total_price REAL DEFAULT 0.0")
+
     conn.commit()
     conn.close()
 
@@ -118,18 +140,82 @@ def seed_menu():
             ))
     conn.commit()
     conn.close()
+
+def seed_settings():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM settings WHERE key = 'restaurant_status'")
+    count = cursor.fetchone()[0]
+    if count == 0:
+        cursor.execute("INSERT INTO settings (key, value) VALUES ('restaurant_status', 'OPEN')")
+    conn.commit()
+    conn.close()
+
+def migrate_historical_orders():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        # Select all orders that have 0.0 total price (or NULL)
+        cursor.execute("SELECT order_id, items FROM orders WHERE total_price IS NULL OR total_price = 0.0")
+        rows = cursor.fetchall()
+        for row in rows:
+            order_id = row[0]
+            try:
+                items = json.loads(row[1])
+            except Exception:
+                continue
+            
+            total_price = 0.0
+            for item in items:
+                name = item.get("item") or item.get("name")
+                qty = item.get("qty") or item.get("quantity") or 0
+                if name:
+                    cursor.execute("SELECT price FROM menu WHERE LOWER(name) = LOWER(?)", (name,))
+                    price_row = cursor.fetchone()
+                    if price_row:
+                        total_price += price_row[0] * qty
+            
+            cursor.execute("UPDATE orders SET total_price = ? WHERE order_id = ?", (total_price, order_id))
+        conn.commit()
+        print("Historical orders migrated successfully.")
+    except Exception as e:
+        print("Error migrating historical orders:", e)
+    finally:
+        conn.close()
+
 # ============================================================
 # DATABASE INITIALIZATION
 # ============================================================
 def initialize_database():
     create_tables()
     seed_menu()
+    seed_settings()
+    migrate_historical_orders()
 
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def is_restaurant_open() -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM settings WHERE key = 'restaurant_status'")
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row[0] == "OPEN"
+    return True
+
+def set_restaurant_status(status: str) -> bool:
+    if status not in ("OPEN", "CLOSED"):
+        return False
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('restaurant_status', ?)", (status,))
+    conn.commit()
+    conn.close()
+    return True
+
 if __name__ == "__main__":
-
     initialize_database()
-
     print("Database initialized successfully.")
 
 def get_menu():
@@ -252,10 +338,18 @@ def create_order(customer_thread_id: str, items: List[Dict]) -> int:
     cursor = conn.cursor()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     items_json = json.dumps(items)
+    
+    total_price = 0.0
+    for item in items:
+        cursor.execute("SELECT price FROM menu WHERE LOWER(name) = LOWER(?)", (item["item"],))
+        row = cursor.fetchone()
+        if row:
+            total_price += row[0] * item["qty"]
+            
     cursor.execute("""
-        INSERT INTO orders (customer_thread_id, items, status, inventory_deducted, created_at, updated_at)
-        VALUES (?, ?, ?, 0, ?, ?)
-    """, (customer_thread_id, items_json, "DRAFT", now_str, now_str))
+        INSERT INTO orders (customer_thread_id, items, status, inventory_deducted, total_price, created_at, updated_at)
+        VALUES (?, ?, ?, 0, ?, ?, ?)
+    """, (customer_thread_id, items_json, "DRAFT", total_price, now_str, now_str))
     order_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -325,12 +419,19 @@ def modify_order(order_id: int, items: List[Dict]) -> bool:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         items_json = json.dumps(items)
         
+        total_price = 0.0
+        for item in items:
+            cursor.execute("SELECT price FROM menu WHERE LOWER(name) = LOWER(?)", (item["item"],))
+            row = cursor.fetchone()
+            if row:
+                total_price += row[0] * item["qty"]
+                
         # Modify the order items and reset status to DRAFT
         cursor.execute("""
             UPDATE orders
-            SET items = ?, status = ?, updated_at = ?
+            SET items = ?, status = ?, total_price = ?, updated_at = ?
             WHERE order_id = ?
-        """, (items_json, "DRAFT", now_str, order_id))
+        """, (items_json, "DRAFT", total_price, now_str, order_id))
         conn.commit()
         return True
     except Exception as e:
@@ -405,6 +506,104 @@ def update_order_status(order_id: int, status: str, manager_note: str = "") -> b
     except Exception as e:
         conn.rollback()
         print("Status update failed:", e)
+        return False
+    finally:
+        conn.close()
+
+def get_all_orders() -> List[Dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM orders ORDER BY order_id DESC")
+        rows = cursor.fetchall()
+        orders = []
+        for row in rows:
+            d = dict(row)
+            d["items"] = json.loads(d["items"])
+            orders.append(d)
+        return orders
+    except Exception as e:
+        print("Error getting all orders:", e)
+        return []
+    finally:
+        conn.close()
+
+def get_all_menu_items() -> List[Dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM menu ORDER BY name")
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        print("Error getting all menu items:", e)
+        return []
+    finally:
+        conn.close()
+
+def add_menu_item(name: str, price: float, available_qty: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO menu (name, price, available_qty, is_active)
+            VALUES (?, ?, ?, 1)
+        """, (name, price, available_qty))
+        conn.commit()
+        return True
+    except Exception as e:
+        print("Error adding menu item:", e)
+        return False
+    finally:
+        conn.close()
+
+def edit_menu_item(item_id: int, name: str, price: float, available_qty: int, is_active: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE menu
+            SET name = ?, price = ?, available_qty = ?, is_active = ?
+            WHERE item_id = ?
+        """, (name, price, available_qty, is_active, item_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print("Error editing menu item:", e)
+        return False
+    finally:
+        conn.close()
+
+def toggle_menu_item_active(item_id: int, is_active: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE menu
+            SET is_active = ?
+            WHERE item_id = ?
+        """, (is_active, item_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print("Error toggling menu item:", e)
+        return False
+    finally:
+        conn.close()
+
+def update_menu_item_stock(item_id: int, qty: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE menu
+            SET available_qty = ?
+            WHERE item_id = ?
+        """, (qty, item_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print("Error updating stock:", e)
         return False
     finally:
         conn.close()
