@@ -940,8 +940,7 @@ It sends input data back to a paused graph, allowing execution to resume from th
 ### 29. Can the agent approve orders directly?
 No. The system prompt restricts the agent from approving orders, and the workflow requires an explicit resume command from the manager portal to finalize transitions.
 
-### 30. How is conversation history retrieved?
-The system fetches chat history from the LangGraph checkpointer using the customer's unique `thread_id`.
+
 
 ---
 
