@@ -931,14 +931,6 @@ SQL databases support ACID transactions, which are necessary to maintain databas
 ### 26. What happens if the Groq API rate limit is exceeded?
 The API returns a `429 Too Many Requests` error, and the client displays a message asking the user to wait a few seconds before retrying.
 
-### 27. How does the system handle soft deletes?
-The `menu` table includes an `is_active` flag. Setting this flag to `0` hides items from the active menu without deleting historical order records.
-
-### 28. What is the role of `Command(resume=...)` in LangGraph?
-It sends input data back to a paused graph, allowing execution to resume from the point of interrupt.
-
-### 29. Can the agent approve orders directly?
-No. The system prompt restricts the agent from approving orders, and the workflow requires an explicit resume command from the manager portal to finalize transitions.
 
 
 
